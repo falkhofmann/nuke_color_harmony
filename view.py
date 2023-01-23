@@ -1,4 +1,4 @@
-from PySide2 import QtCore, QtWidgets
+from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtCore import QLineF, QPointF, QRect, Qt
 from PySide2.QtGui import (QColor, QConicalGradient, QMouseEvent, QPainter,
                            QPaintEvent, QRadialGradient, QResizeEvent)
@@ -123,6 +123,30 @@ class ColorWheel(QWidget):
         return self.selected_color
 
 
+class Variation(QtWidgets.QWidget):
+    def __init__(self, color, parent=None) -> None:
+        super().__init__(parent=parent)
+        self.set_up_window_properties()
+
+        self._color = color
+        print(self._color)
+
+    def set_up_window_properties(self):
+        self.setFixedSize(300, 100)
+
+    def paintEvent(self, e):
+
+        qp = QtGui.QPainter()
+        qp.begin(self)
+        qp.setBrush(self._color)
+        qp.drawRect(0, 0, self.width(), self.height())
+        qp.end()
+
+    def set_color(self, color):
+        self._color = color
+        self.repaint()
+
+
 class ColorPaletteUi(QtWidgets.QWidget):
     def __init__(self):
         super(ColorPaletteUi, self).__init__()
@@ -134,17 +158,63 @@ class ColorPaletteUi(QtWidgets.QWidget):
 
     def build_widgets(self):
         self.colorwheel = ColorWheel()
+        self.btn_analogous = QtWidgets.QPushButton("Analogous")
+        self.btn_monochromatic = QtWidgets.QPushButton("Monochromatic")
+        self.btn_triad = QtWidgets.QPushButton("Triad")
+        self.btn_complementary = QtWidgets.QPushButton("Complementary")
+        self.btn_split_complementary = QtWidgets.QPushButton(
+            "split-complementary")
+        self.btn_double_split_complementary = QtWidgets.QPushButton(
+            "double-split-complementary")
+        self.btn_square = QtWidgets.QPushButton("Square")
+        self.btn_compound = QtWidgets.QPushButton("Compound")
+        self.btn_shades = QtWidgets.QPushButton("Shades")
+
+        self.variation_1 = Variation(QtGui.QColor(0, 0, 0, 0))
+        self.variation_2 = Variation(QtGui.QColor(0, 50, 0, 0))
+        self.variation_3 = Variation(QtGui.QColor(0, 50, 50, 0))
+        self.variation_4 = Variation(QtGui.QColor(50, 0, 0, 0))
+        self.variation_5 = Variation(QtGui.QColor(50, 0, 50, 0))
 
     def build_layouts(self):
-        main_layout = QtWidgets.QHBoxLayout()
-        main_layout.addWidget(self.colorwheel)
+
+        colorwheel_layout = QtWidgets.QVBoxLayout()
+        colorwheel_layout.addWidget(self.colorwheel)
+
+        button_layout = QtWidgets.QVBoxLayout()
+        button_layout.addWidget(self.btn_analogous)
+        button_layout.addWidget(self.btn_monochromatic)
+        button_layout.addWidget(self.btn_triad)
+        button_layout.addWidget(self.btn_complementary)
+        button_layout.addWidget(self.btn_split_complementary)
+        button_layout.addWidget(self.btn_double_split_complementary)
+        button_layout.addWidget(self.btn_square)
+        button_layout.addWidget(self.btn_compound)
+        button_layout.addWidget(self.btn_shades)
+        button_layout.addStretch()
+
+        top_layout = QtWidgets.QHBoxLayout()
+        top_layout.addLayout(colorwheel_layout)
+        top_layout.addLayout(button_layout)
+        top_layout.addWidget(self.colorwheel)
+
+        bottom_layout = QtWidgets.QHBoxLayout()
+        bottom_layout.addWidget(self.variation_1)
+        bottom_layout.addWidget(self.variation_2)
+        bottom_layout.addWidget(self.variation_3)
+        bottom_layout.addWidget(self.variation_4)
+        bottom_layout.addWidget(self.variation_5)
+
+        main_layout = QtWidgets.QVBoxLayout()
+        main_layout.addLayout(top_layout)
+        main_layout.addLayout(bottom_layout)
         self.setLayout(main_layout)
 
     def set_up_window_properties(self):
-        width = 500
+        width = 1500
         height = 500
         self.resize(width, height)
-        self.setWindowTitle("hans")
+        self.setWindowTitle("color palette")
         self.setMinimumSize(width, height)
         self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 
@@ -162,7 +232,8 @@ class ColorPaletteUi(QtWidgets.QWidget):
             self.close()
 
     def output_values(self, color):
-        print(color)
+        self.variation_1.set_color(color)
+        self.variation_3.set_color(color)
 
 
 if __name__ == "__main__":
