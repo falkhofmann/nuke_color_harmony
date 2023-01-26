@@ -4,6 +4,8 @@ from PySide2.QtGui import (QColor, QConicalGradient, QMouseEvent, QPainter,
                            QPaintEvent, QRadialGradient, QResizeEvent)
 from PySide2.QtWidgets import QSizePolicy, QWidget
 
+from harmonies import HARMONY_SETS
+
 
 class ColorWheel(QWidget):
     color_changed = QtCore.Signal(QColor)
@@ -27,10 +29,10 @@ class ColorWheel(QWidget):
 
         self._circle_size = 12
 
-        self._harmony = None
+        self._harmony_set = None
 
-    def _update_harmony(self, harmony):
-        self._harmony = harmony
+    def _update_harmony(self, harmony_set):
+        self._harmony_set = harmony_set
 
     def resizeEvent(self, ev: QResizeEvent) -> None:
         size = min(self.width(), self.height()) - self.margin * 2
@@ -67,101 +69,24 @@ class ColorWheel(QWidget):
         line.translate(center)
         p.drawLine(line)
         p.drawEllipse(line.p2(), self._circle_size, self._circle_size)
-        if self._harmony:
-            print(self._harmony)
+        if self._harmony_set:
             self.draw_harmony(p, angle, center)
 
     def draw_harmony(self, p, angle, center):
-        if self._harmony.lower() == "complementary":
-            self.draw_complementary(p, angle, center)
-        elif self._harmony.lower() == "split-complementary":
-            self.draw_split_complementary(p, angle, center)
-        elif self._harmony.lower() == "triad":
-            self.draw_split_triad(p, angle, center)
-        elif self._harmony.lower() == "tetradic":
-            self.draw_split_tetradic(p, angle, center)
 
-    def draw_complementary(self, p, angle, center):
-        line = QLineF.fromPolar(self.radius * self.s, (angle + 180)-360)
-        line.translate(center)
-        p.drawLine(line)
+        for harmony in self._harmony_set.harmonies:
+            self.calc_harmonies(p, angle, center, harmony)
 
-        complementary = (((self.h * 360 + 180) - 360) % 360) / 360
-        c_color = QColor.fromHsvF(complementary, self.s, self.v)
-        p.setBrush(c_color)
-        p.drawEllipse(line.p2(), self._circle_size, self._circle_size)
-
-    def draw_split_complementary(self, p, angle, center):
-        line = QLineF.fromPolar(
-            self.radius * self.s, (angle + 150)-360)
-        line.translate(center)
-        p.drawLine(line)
-
-        split_one = (((self.h * 360 + 150) - 360) % 360) / 360
-        so_color1 = QColor.fromHsvF(split_one, self.s, self.v)
-        p.setBrush(so_color1)
-        p.drawEllipse(line.p2(), self._circle_size, self._circle_size)
+    def calc_harmonies(self, p, angle, center, harmony):
 
         line = QLineF.fromPolar(
-            self.radius * self.s, (angle + 210)-360)
+            self.radius * (self.s * harmony.saturation_scale), (angle + harmony.hue_offset)-360)
         line.translate(center)
         p.drawLine(line)
 
-        split_two = (((self.h * 360 + 210) - 360) % 360) / 360
-        so_color2 = QColor.fromHsvF(split_two, self.s, self.v)
-        p.setBrush(so_color2)
-        p.drawEllipse(line.p2(), self._circle_size, self._circle_size)
-
-    def draw_split_triad(self, p, angle, center):
-        line = QLineF.fromPolar(
-            self.radius * self.s, (angle + 120)-360)
-        line.translate(center)
-        p.drawLine(line)
-
-        split_one = (((self.h * 360 + 120) - 360) % 360) / 360
-        so_color1 = QColor.fromHsvF(split_one, self.s, self.v)
-        p.setBrush(so_color1)
-        p.drawEllipse(line.p2(), self._circle_size, self._circle_size)
-
-        line = QLineF.fromPolar(
-            self.radius * self.s, (angle + 240)-360)
-        line.translate(center)
-        p.drawLine(line)
-
-        split_two = (((self.h * 360 + 240) - 360) % 360) / 360
-        so_color2 = QColor.fromHsvF(split_two, self.s, self.v)
-        p.setBrush(so_color2)
-        p.drawEllipse(line.p2(), self._circle_size, self._circle_size)
-
-    def draw_split_tetradic(self, p, angle, center):
-        line = QLineF.fromPolar(
-            self.radius * self.s, (angle + 90)-360)
-        line.translate(center)
-        p.drawLine(line)
-
-        split_one = (((self.h * 360 + 90) - 360) % 360) / 360
-        so_color1 = QColor.fromHsvF(split_one, self.s, self.v)
-        p.setBrush(so_color1)
-        p.drawEllipse(line.p2(), self._circle_size, self._circle_size)
-
-        line = QLineF.fromPolar(
-            self.radius * self.s, (angle + 180)-360)
-        line.translate(center)
-        p.drawLine(line)
-
-        split_two = (((self.h * 360 + 180) - 360) % 360) / 360
-        so_color2 = QColor.fromHsvF(split_two, self.s, self.v)
-        p.setBrush(so_color2)
-        p.drawEllipse(line.p2(), self._circle_size, self._circle_size)
-
-        line = QLineF.fromPolar(
-            self.radius * self.s, (angle + 270)-360)
-        line.translate(center)
-        p.drawLine(line)
-
-        split_three = (((self.h * 360 + 270) - 360) % 360) / 360
-        so_color2 = QColor.fromHsvF(split_three, self.s, self.v)
-        p.setBrush(so_color2)
+        target_harmony = (
+            ((self.h * 360 + harmony.hue_offset) - 360) % 360) / 360
+        p.setBrush(QColor.fromHsvF(target_harmony, self.s, self.v))
         p.drawEllipse(line.p2(), self._circle_size, self._circle_size)
 
     def recalc(self) -> None:
@@ -232,9 +157,10 @@ class ColorWheel(QWidget):
 
 class HarmonyButton(QtWidgets.QPushButton):
 
-    def __init__(self, text, parent=None) -> None:
+    def __init__(self, harmony_set, parent=None) -> None:
         super().__init__(parent=parent)
-        self.setText(text)
+        self.harmony_set = harmony_set
+        self.setText(self.harmony_set.name)
         self.setCheckable(True)
         self.setMaximumWidth(200)
 
@@ -244,6 +170,8 @@ class HarmonieSelection(QtWidgets.QWidget):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
+        self._harmony_btns = []
+
         self.build_widgets()
         self.build_layouts()
         self.set_up_window_properties()
@@ -254,22 +182,10 @@ class HarmonieSelection(QtWidgets.QWidget):
         self._last = None
 
     def build_widgets(self):
-        self.btn_analogous = HarmonyButton("Analogous")
-        self.btn_monochromatic = HarmonyButton("Monochromatic")
-        self.btn_triad = HarmonyButton("Triad")
-        self.btn_complementary = HarmonyButton("Complementary")
-        self.btn_split_complementary = HarmonyButton("split-complementary")
-        self.btn_double_split_complementary = HarmonyButton(
-            "double-split-complementary")
-        self.btn_square = HarmonyButton("Square")
-        self.btn_tetradic = HarmonyButton("Tetradic")
-        self.btn_compound = HarmonyButton("Compound")
-        self.btn_shades = HarmonyButton("Shades")
 
-        self._harmony_btns = [self.btn_analogous, self.btn_complementary, self.btn_split_complementary,
-                              self.btn_double_split_complementary, self.btn_compound, self.btn_monochromatic,
-                              self.btn_shades, self.btn_square,
-                              self.btn_tetradic, self.btn_triad]
+        for harmony_set in HARMONY_SETS:
+            btn = HarmonyButton(harmony_set)
+            self._harmony_btns.append(btn)
 
     def build_layouts(self):
         button_layout = QtWidgets.QVBoxLayout()
@@ -291,7 +207,7 @@ class HarmonieSelection(QtWidgets.QWidget):
     def emit_harmony_change(self, btn):
         button = self.sender()
         if button.isChecked():
-            self.harmony_changed.emit(self.sender().text())
+            self.harmony_changed.emit(self.sender().harmony_set)
             if self._current:
                 self._current.setChecked(False)
             self._current = button
