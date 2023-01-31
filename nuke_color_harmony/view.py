@@ -6,7 +6,6 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtCore import QLineF, QPointF, QRect, Qt
 from PySide2.QtGui import (QColor, QConicalGradient, QMouseEvent, QPainter,
                            QPaintEvent, QRadialGradient, QResizeEvent)
-from PySide2.QtWidgets import QSizePolicy
 
 
 class ColorWheel(QtWidgets.QWidget):
@@ -25,8 +24,8 @@ class ColorWheel(QtWidgets.QWidget):
         self.set_color(self.selected_color)
         self.margin = margin
 
-        qsp = QSizePolicy(QSizePolicy.Preferred,
-                          QSizePolicy.Preferred)
+        qsp = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                    QtWidgets.QSizePolicy.Preferred)
         qsp.setHeightForWidth(True)
         self.setSizePolicy(qsp)
 
@@ -42,7 +41,6 @@ class ColorWheel(QtWidgets.QWidget):
     def randomize_value(self):
         self.selected_color = QColor.fromHsvF(
             uniform(0, 1), uniform(0, 1), 1.0)
-        # self.set_individual_colors()
         self.set_color(self.selected_color)
         self.repaint()
 
@@ -158,7 +156,8 @@ class HarmonyButton(QtWidgets.QPushButton):
 
 class HarmonieSelection(QtWidgets.QGroupBox):
     harmony_selection_changed = QtCore.Signal(object)
-    randomize_values = QtCore.Signal(object)
+    randomize_values = QtCore.Signal()
+    add_current_colors_to_store = QtCore.Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
@@ -181,6 +180,7 @@ class HarmonieSelection(QtWidgets.QGroupBox):
             self._harmony_btns.append(btn)
 
         self.btn_randomize = QtWidgets.QPushButton("randomize")
+        self.btn_add_to_store = QtWidgets.QPushButton("add to store >>")
 
     def build_layouts(self):
         """
@@ -192,6 +192,7 @@ class HarmonieSelection(QtWidgets.QGroupBox):
             button_layout.addWidget(btn)
         button_layout.addStretch()
         button_layout.addWidget(self.btn_randomize)
+        button_layout.addWidget(self.btn_add_to_store)
 
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.addLayout(button_layout)
@@ -202,6 +203,7 @@ class HarmonieSelection(QtWidgets.QGroupBox):
             btn.clicked.connect(self.emit_harmony_change)
 
         self.btn_randomize.clicked.connect(self.emit_randomize_values)
+        self.btn_add_to_store.clicked.connect(self.emit_add_to_store)
 
     def emit_harmony_change(self, _=None, btn=None):
         button = btn or self.sender()
@@ -224,8 +226,10 @@ class HarmonieSelection(QtWidgets.QGroupBox):
         btn.setChecked(True)
 
         self.emit_harmony_change(btn=btn)
-        self.randomize_values.emit(None)
+        self.randomize_values.emit()
 
+    def emit_add_to_store(self):
+        self.add_current_colors_to_store.emit()
 
 class Variation(QtWidgets.QWidget):
     def __init__(self, color=None, parent=None) -> None:
@@ -298,18 +302,24 @@ class ColorBars(QtWidgets.QGroupBox):
 
 
 class HarmonyStore(QtWidgets.QGroupBox):
+
+    restore_store_item = QtCore.Signal(object)
+
     def __init__(self, parent=None):
         super(HarmonyStore, self).__init__(parent=parent)
         self.setTitle("Harmony Store")
         self.build_widgets()
         self.build_layouts()
         self.set_up_window_properties()
+        self.set_up_signals()
 
     def build_widgets(self):
         """
         Build widgets to add to this very widget.
         """
         self.list_widget = QtWidgets.QListWidget()
+        self.list_widget.setSelectionMode(
+            QtWidgets.QAbstractItemView.MultiSelection)
 
     def build_layouts(self):
         """
@@ -322,12 +332,48 @@ class HarmonyStore(QtWidgets.QGroupBox):
     def set_up_window_properties(self):
         self.setMinimumWidth(250)
 
+    def set_up_signals(self):
+        self.list_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.list_widget.connect(self.list_widget,
+                                 QtCore.SIGNAL(
+                                     "customContextMenuRequested(QPoint)"),
+                                 self.context_menu)
+
+        self.list_widget.itemDoubleClicked.connect(self.item_double_clicked)
+
+    def add_colors_to_store(self, harmony, colors):
+        store_item = StoreItem(harmony=harmony, color_set=colors)
+        self.list_widget.addItem(store_item)
+
+    def context_menu(self, QPos):
+        self.listMenu = QtWidgets.QMenu()
+        menu_item = self.listMenu.addAction("Remove Item")
+        self.connect(menu_item, QtCore.SIGNAL(
+            "triggered()"), self.remove_selected_items)
+        parentPosition = self.list_widget.mapToGlobal(QtCore.QPoint(0, 0))
+        self.listMenu.move(parentPosition + QPos)
+        self.listMenu.show()
+
+    def remove_selected_items(self):
+        for item in self.list_widget.selectedItems():
+            self.list_widget.takeItem(self.list_widget.row(item))
+
+    def item_double_clicked(self, item):
+        print(item)
+
+    def keyPressEvent(self, event):
+        """Catch user key interactions. Close on escape."""
+        if event.key() == QtCore.Qt.Key_Delete:
+            self.remove_selected_items()
+
 
 class StoreItem(QtWidgets.QListWidgetItem):
-    def __init__(self, color_set, parent=None):
+    def __init__(self, harmony, color_set, parent=None):
         super(StoreItem, self).__init__(parent=parent)
 
+        self._harmony = harmony
         self._color_set = color_set
+        self.setText(self._harmony.name)
 
     @property
     def color_set(self):
@@ -338,7 +384,6 @@ class StoreItem(QtWidgets.QListWidgetItem):
             list: Color of saved item.
         """
         return self._color_set
-
 
 class ColorPaletteUi(QtWidgets.QWidget):
     def __init__(self):
@@ -398,6 +443,9 @@ class ColorPaletteUi(QtWidgets.QWidget):
         self.harmonies.harmony_selection_changed.connect(
             self.harmony_selection_change)
         self.harmonies.randomize_values.connect(self.randomize_values)
+        self.harmonies.add_current_colors_to_store.connect(
+            self.add_current_color_to_store)
+        self.harmony_store.restore_store_item.connect(self.restore_store_item)
 
     def abort(self):
         """
@@ -411,6 +459,9 @@ class ColorPaletteUi(QtWidgets.QWidget):
         if event.key() == QtCore.Qt.Key_Escape:
             self.close()
 
+    def restore_store_item(self, item):
+        print(item)
+
     def output_values(self, colors):
         """
         Emit signl to update current color selection.
@@ -418,7 +469,9 @@ class ColorPaletteUi(QtWidgets.QWidget):
         Args:
             colors (list): List of current calculated colors.
         """
-        self.colorbars.update(colors)
+        self._colors = colors
+        self.colorbars.update(self._colors)
+
 
     @property
     def harmony(self):
@@ -430,10 +483,15 @@ class ColorPaletteUi(QtWidgets.QWidget):
         """
         return self._harmony
 
+    def add_current_color_to_store(self):
+        self.harmony_store.add_colors_to_store(
+            harmony=self._harmony, colors=self._colors)
+
     def harmony_selection_change(self, harmony):
+        self._harmony = harmony
         self.colorbars.clear_colors()
         self._colors.clear()
-        self.colorwheel._update_harmony(harmony)
+        self.colorwheel._update_harmony(self._harmony)
 
     def randomize_values(self):
         self.colorwheel.randomize_value()
