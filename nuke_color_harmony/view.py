@@ -1,11 +1,22 @@
+import os
 from random import choice, uniform
 
-import utils
-from harmonies import HARMONY_SETS
 from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtCore import QLineF, QPointF, QRect, Qt
 from PySide2.QtGui import (QColor, QConicalGradient, QMouseEvent, QPainter,
                            QPaintEvent, QRadialGradient, QResizeEvent)
+
+from nuke_color_harmony.harmonies import HARMONY_SETS
+
+
+def set_style_sheet(widget):
+
+    styles_file = os.path.normpath(os.path.join(os.path.dirname(__file__),
+                                                "stylesheet.qss"))
+
+    with open(styles_file, "r") as file_:
+        style = file_.read()
+        widget.setStyleSheet(style)
 
 
 class ColorWheel(QtWidgets.QWidget):
@@ -151,7 +162,7 @@ class HarmonyButton(QtWidgets.QPushButton):
         self.setCheckable(True)
         self.setMaximumWidth(200)
         self.setToolTip(self.harmony_set.tooltip)
-        utils.set_style_sheet(self)
+        set_style_sheet(self)
 
 
 class HarmonieSelection(QtWidgets.QGroupBox):
@@ -230,6 +241,7 @@ class HarmonieSelection(QtWidgets.QGroupBox):
 
     def emit_add_to_store(self):
         self.add_current_colors_to_store.emit()
+
 
 class Variation(QtWidgets.QWidget):
     def __init__(self, color=None, parent=None) -> None:
@@ -385,7 +397,15 @@ class StoreItem(QtWidgets.QListWidgetItem):
         """
         return self._color_set
 
-class ColorPaletteUi(QtWidgets.QWidget):
+
+class ColorPaletteUi(QtWidgets.QDialog):
+
+    export_for_clipboard = QtCore.Signal(object)
+    export_for_csv = QtCore.Signal(object)
+    export_for_nuke = QtCore.Signal(object)
+    open_sesion = QtCore.Signal(object)
+    save_sesion = QtCore.Signal(object)
+
     def __init__(self):
         super(ColorPaletteUi, self).__init__()
 
@@ -394,6 +414,7 @@ class ColorPaletteUi(QtWidgets.QWidget):
         self._variations = []
 
         self.build_widgets()
+        self.build_menu()
         self.build_layouts()
         self.set_up_window_properties()
         self.set_up_signals()
@@ -420,9 +441,35 @@ class ColorPaletteUi(QtWidgets.QWidget):
         top_layout.addWidget(self.harmony_store)
 
         main_layout = QtWidgets.QVBoxLayout()
+        main_layout.addWidget(self.menu_bar)
         main_layout.addLayout(top_layout)
         main_layout.addWidget(self.colorbars)
         self.setLayout(main_layout)
+
+    def build_menu(self):
+        self.menu_bar = QtWidgets.QMenuBar()
+        self.session_menu = self.menu_bar.addMenu('Session')
+        self.export_menu = self.menu_bar.addMenu('Export')
+
+        open_session = QtWidgets.QAction('Open Session ...', self)
+        open_session.triggered.connect(self.open_session)
+        self.session_menu.addAction(open_session)
+
+        save_session = QtWidgets.QAction('Save Session ...', self)
+        save_session.triggered.connect(self.export_session)
+        self.session_menu.addAction(save_session)
+
+        export_nuke = QtWidgets.QAction('Export for nuke', self)
+        export_nuke.triggered.connect(self.export_nuke)
+        self.export_menu.addAction(export_nuke)
+
+        export_csv = QtWidgets.QAction('Export CSV', self)
+        export_csv.triggered.connect(self.export_csv)
+        self.export_menu.addAction(export_csv)
+
+        export_clipboard = QtWidgets.QAction('Export Clipboard', self)
+        export_clipboard.triggered.connect(self.export_clipboard)
+        self.export_menu.addAction(export_clipboard)
 
     def set_up_window_properties(self):
         """
@@ -472,6 +519,20 @@ class ColorPaletteUi(QtWidgets.QWidget):
         self._colors = colors
         self.colorbars.update(self._colors)
 
+    def export_nuke(self):
+        self.export_for_nuke.emit(None)
+
+    def export_csv(self):
+        self.export_for_csv.emit(None)
+
+    def export_clipboard(self):
+        self.export_for_clipboard.emit(None)
+
+    def export_session(self):
+        self.save_sesion.emit(None)
+
+    def open_session(self):
+        self.open_sesion.emit(None)
 
     @property
     def harmony(self):
