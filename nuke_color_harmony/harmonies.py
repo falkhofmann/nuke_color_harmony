@@ -54,8 +54,10 @@ HARMONY_SETS = [Harmony(name="analogous",
                         ),
 
                 Harmony(name="split-complementary",
-                        colors=[Color(hue_offset=150),
-                                Color(hue_offset=210)],
+                        colors=[Color(saturation_scale=0.5, value_scale=0.5),
+                                Color(hue_offset=150),
+                                Color(hue_offset=210),
+                                Color(hue_offset=210, saturation_scale=0.5)],
                         tooltip="<b>Split Complementary Harmony</b> - One color paired with the two \n"
                         "colors on either side of that color’s direct complement,\n"
                         "also known as a divided complement. "

@@ -49,9 +49,9 @@ class ColorWheel(QtWidgets.QWidget):
         self._harmony = harmony
         self.set_color(self.selected_color)
 
-    def randomize_value(self):
+    def randomize_value(self, random_value=1.0):
         self.selected_color = QColor.fromHsvF(
-            uniform(0, 1), uniform(0, 1), 1.0)
+            uniform(0.2, 1), uniform(0.2, 1), random_value)
         self.set_color(self.selected_color)
         self.repaint()
 
@@ -152,6 +152,54 @@ class ColorWheel(QtWidgets.QWidget):
         self.v = color.valueF()
         self.recalc()
 
+    def set_value(self, value):
+        self.v = value
+        self.recalc()
+
+
+class ValueSlider(QtWidgets.QWidget):
+    value_changed = QtCore.Signal(object)
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent=parent)
+        self._value = 1.0
+        self._scale_factor = 100
+
+        self.build_widgets()
+        self.build_layouts()
+        self.set_up_signals()
+
+    def build_widgets(self):
+        self.slider = QtWidgets.QSlider()
+        self.slider.setOrientation(QtCore.Qt.Vertical)
+        self.slider.setTickPosition(QtWidgets.QSlider.TicksBelow)
+        self.slider.setTickInterval(10)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(100)
+        self.slider.setValue(100)
+
+    def build_layouts(self):
+        main_layout = QtWidgets.QHBoxLayout()
+        main_layout.addWidget(self.slider)
+        self.setLayout(main_layout)
+
+    def set_up_signals(self):
+        self.slider.valueChanged.connect(self.emit_value_changed)
+
+    def emit_value_changed(self, value):
+        self.value_changed.emit(value/self._scale_factor)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self.slider.blockSignals(True)
+        self._value = value
+        self.slider.setValue(value*self._scale_factor)
+        self.slider.blockSignals(False)
+
 
 class HarmonyButton(QtWidgets.QPushButton):
 
@@ -166,9 +214,9 @@ class HarmonyButton(QtWidgets.QPushButton):
 
 
 class HarmonieSelection(QtWidgets.QGroupBox):
-    harmony_selection_changed = QtCore.Signal(object)
+    selection_changed = QtCore.Signal(object)
     randomize_values = QtCore.Signal()
-    add_current_colors_to_store = QtCore.Signal()
+    add_current_to_store = QtCore.Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
@@ -219,7 +267,7 @@ class HarmonieSelection(QtWidgets.QGroupBox):
     def emit_harmony_change(self, _=None, btn=None):
         button = btn or self.sender()
         if button.isChecked():
-            self.harmony_selection_changed.emit(button.harmony_set)
+            self.selection_changed.emit(button.harmony_set)
             if self._current:
                 self._current.setChecked(False)
             self._current = button
@@ -240,7 +288,7 @@ class HarmonieSelection(QtWidgets.QGroupBox):
         self.randomize_values.emit()
 
     def emit_add_to_store(self):
-        self.add_current_colors_to_store.emit()
+        self.add_current_to_store.emit()
 
 
 class Variation(QtWidgets.QWidget):
@@ -353,6 +401,10 @@ class HarmonyStore(QtWidgets.QGroupBox):
 
         self.list_widget.itemDoubleClicked.connect(self.item_double_clicked)
 
+    @property
+    def items(self):
+        return [self.list_widget.item(index) for index in range(self.list_widget.count())]
+
     def add_colors_to_store(self, harmony, colors):
         store_item = StoreItem(harmony=harmony, color_set=colors)
         self.list_widget.addItem(store_item)
@@ -371,7 +423,7 @@ class HarmonyStore(QtWidgets.QGroupBox):
             self.list_widget.takeItem(self.list_widget.row(item))
 
     def item_double_clicked(self, item):
-        print(item)
+        pass
 
     def keyPressEvent(self, event):
         """Catch user key interactions. Close on escape."""
@@ -424,6 +476,7 @@ class ColorPaletteUi(QtWidgets.QDialog):
         Build widgets to add to main widget.
         """
         self.colorwheel = ColorWheel()
+        self.value_slider = ValueSlider()
         self.harmonies = HarmonieSelection(self)
         self.colorbars = ColorBars(self)
         self.harmony_store = HarmonyStore(self)
@@ -437,6 +490,8 @@ class ColorPaletteUi(QtWidgets.QDialog):
 
         top_layout = QtWidgets.QHBoxLayout()
         top_layout.addWidget(self.colorwheel)
+        top_layout.addSpacing(20)
+        top_layout.addWidget(self.value_slider)
         top_layout.addWidget(self.harmonies)
         top_layout.addWidget(self.harmony_store)
 
@@ -459,7 +514,7 @@ class ColorPaletteUi(QtWidgets.QDialog):
         save_session.triggered.connect(self.export_session)
         self.session_menu.addAction(save_session)
 
-        export_nuke = QtWidgets.QAction('Export for nuke', self)
+        export_nuke = QtWidgets.QAction('Export into nuke', self)
         export_nuke.triggered.connect(self.export_nuke)
         self.export_menu.addAction(export_nuke)
 
@@ -467,7 +522,7 @@ class ColorPaletteUi(QtWidgets.QDialog):
         export_csv.triggered.connect(self.export_csv)
         self.export_menu.addAction(export_csv)
 
-        export_clipboard = QtWidgets.QAction('Export Clipboard', self)
+        export_clipboard = QtWidgets.QAction('Copy to Clipboard', self)
         export_clipboard.triggered.connect(self.export_clipboard)
         self.export_menu.addAction(export_clipboard)
 
@@ -475,7 +530,7 @@ class ColorPaletteUi(QtWidgets.QDialog):
         """
         Set window properties on main widget.
         """
-        width = 1000
+        width = 1100
         height = 1000
         self.resize(width, height)
         self.setWindowTitle("Nuke color harmony")
@@ -487,11 +542,10 @@ class ColorPaletteUi(QtWidgets.QDialog):
         Connect signals from widgets to adapt UI.
         """
         self.colorwheel.color_changed.connect(self.output_values)
-        self.harmonies.harmony_selection_changed.connect(
-            self.harmony_selection_change)
+        self.value_slider.value_changed.connect(self.value_changed)
+        self.harmonies.selection_changed.connect(self.harmony_selection_change)
         self.harmonies.randomize_values.connect(self.randomize_values)
-        self.harmonies.add_current_colors_to_store.connect(
-            self.add_current_color_to_store)
+        self.harmonies.add_current_to_store.connect(self.add_current_to_store)
         self.harmony_store.restore_store_item.connect(self.restore_store_item)
 
     def abort(self):
@@ -507,7 +561,7 @@ class ColorPaletteUi(QtWidgets.QDialog):
             self.close()
 
     def restore_store_item(self, item):
-        print(item)
+        pass
 
     def output_values(self, colors):
         """
@@ -519,14 +573,21 @@ class ColorPaletteUi(QtWidgets.QDialog):
         self._colors = colors
         self.colorbars.update(self._colors)
 
+    def _get_export_data(self):
+        pass
+
     def export_nuke(self):
         self.export_for_nuke.emit(None)
 
     def export_csv(self):
+
+        file_dialog = QtWidgets.QFileDialog()
+        file_dialog.getSaveFileName()
         self.export_for_csv.emit(None)
 
     def export_clipboard(self):
-        self.export_for_clipboard.emit(None)
+        color_sets = [item.color_set for item in self.harmony_store.items]
+        self.export_for_clipboard.emit(color_sets)
 
     def export_session(self):
         self.save_sesion.emit(None)
@@ -540,13 +601,16 @@ class ColorPaletteUi(QtWidgets.QDialog):
         Get current Harmony
 
         Returns:
-            Harmony: Currnt selected color harmony scheme.
+            Harmony: Current selected color harmony scheme.
         """
         return self._harmony
 
-    def add_current_color_to_store(self):
+    def add_current_to_store(self):
         self.harmony_store.add_colors_to_store(
             harmony=self._harmony, colors=self._colors)
+
+    def value_changed(self, value):
+        self.colorwheel.set_value(value=value)
 
     def harmony_selection_change(self, harmony):
         self._harmony = harmony
@@ -555,7 +619,9 @@ class ColorPaletteUi(QtWidgets.QDialog):
         self.colorwheel._update_harmony(self._harmony)
 
     def randomize_values(self):
-        self.colorwheel.randomize_value()
+        random_value = uniform(0.4, 1)
+        self.value_slider.value = random_value
+        self.colorwheel.randomize_value(random_value=random_value)
 
 
 if __name__ == "__main__":

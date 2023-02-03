@@ -1,6 +1,7 @@
 """Connect user interface with model."""
 
-from nuke_color_harmony import view
+from . import view
+from .export import BaseExport
 
 # try:
 #     from nuke_color_harmony import view
@@ -39,7 +40,8 @@ class Controller(object):
         print("export_for_csv")
 
     def export_for_clipboard(self, sesion_data):
-        print("export_for_clipboard")
+        export = BaseExport(sesion_data)
+        export.copy_to_clipboard()
 
 
 def start():
