@@ -27,7 +27,6 @@ class ColorWheel(QtWidgets.QWidget):
         super().__init__(parent=parent)
         self.radius = 0
 
-        self.setMinimumSize(500, 500)
         self.selected_color = QColor.fromHsvF(*startcolor)
         self.x = 0.5
         self.y = 0.5
@@ -35,8 +34,8 @@ class ColorWheel(QtWidgets.QWidget):
         self.set_color(self.selected_color)
         self.margin = margin
 
-        qsp = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                    QtWidgets.QSizePolicy.Preferred)
+        qsp = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                    QtWidgets.QSizePolicy.Expanding)
         qsp.setHeightForWidth(True)
         self.setSizePolicy(qsp)
 
@@ -50,10 +49,8 @@ class ColorWheel(QtWidgets.QWidget):
         self.set_color(self.selected_color, repaint=trigger)
 
     def randomize_value(self, random_color):
-        # self.blockSignals(True)
         self.selected_color = random_color
         self.set_color(random_color)
-        # self.blockSignals(False)
         angle = 360 * self.h + 90
         self.calculate_colors(angle=angle)
 
@@ -169,6 +166,10 @@ class ColorWheel(QtWidgets.QWidget):
         self.v = value
         self.recalc()
 
+    def restore(self, item):
+        self._harmony = item.harmony
+        self.set_color(item.color_set[0])
+
 
 class ValueSlider(QtWidgets.QWidget):
     value_changed = QtCore.Signal(object)
@@ -221,7 +222,7 @@ class HarmonyButton(QtWidgets.QPushButton):
         self.harmony_set = harmony_set
         self.setText(self.harmony_set.name)
         self.setCheckable(True)
-        self.setMaximumWidth(200)
+        self.setMaximumWidth(250)
         self.setToolTip(self.harmony_set.tooltip)
         set_style_sheet(self)
 
@@ -254,6 +255,9 @@ class HarmonieSelection(QtWidgets.QGroupBox):
         self.btn_randomize = QtWidgets.QPushButton("randomize")
         self.btn_add_to_store = QtWidgets.QPushButton("add to store >>")
 
+        self.btn_randomize.setMaximumWidth(250)
+        self.btn_add_to_store.setMaximumWidth(250)
+
     def build_layouts(self):
         """
         Build widget layout and add other widgets accordingly.
@@ -276,6 +280,14 @@ class HarmonieSelection(QtWidgets.QGroupBox):
 
         self.btn_randomize.clicked.connect(self.emit_randomize_values)
         self.btn_add_to_store.clicked.connect(self.emit_add_to_store)
+
+    def restore(self, harmony):
+        self._current.setChecked(False)
+        for btn in self._harmony_btns:
+            if btn.harmony_set == harmony:
+                btn.setChecked(True)
+                self._current = btn
+                return
 
     def emit_harmony_change(self, _=None, btn=None, trigger=True):
         button = btn or self.sender()
@@ -307,14 +319,10 @@ class HarmonieSelection(QtWidgets.QGroupBox):
 class Variation(QtWidgets.QWidget):
     def __init__(self, color=None, parent=None) -> None:
         super().__init__(parent=parent)
-        self.set_up_window_properties()
         self._clear_color = QColor(0.0, 0.0, 0.0, 0.0)
         self._color = color or self._clear_color
         self._color_label = ""
         self._active = False
-
-    def set_up_window_properties(self):
-        self.setFixedSize(150, 400)
 
     def set_color(self, color):
         self._color = color
@@ -324,6 +332,9 @@ class Variation(QtWidgets.QWidget):
         self.setAutoFillBackground(True)
         self.build_overlay()
         self._active = True
+
+    def sizeHint(self):
+        return QtCore.QSize(200, 400)
 
     def clear_color(self):
         self._color = self._clear_color
@@ -368,7 +379,7 @@ class ColorBars(QtWidgets.QGroupBox):
         Build widgets to add to this very widget.
         """
         for _ in range(5):
-            new_var = Variation()
+            new_var = Variation(parent=self)
             self._variations.append(new_var)
 
     def build_layouts(self):
@@ -416,7 +427,7 @@ class HarmonyStore(QtWidgets.QGroupBox):
         """
         self.list_widget = QtWidgets.QListWidget()
         self.list_widget.setSelectionMode(
-            QtWidgets.QAbstractItemView.MultiSelection)
+            QtWidgets.QAbstractItemView.SingleSelection)
 
     def build_layouts(self):
         """
@@ -427,7 +438,7 @@ class HarmonyStore(QtWidgets.QGroupBox):
         self.setLayout(main_layout)
 
     def set_up_window_properties(self):
-        self.setMinimumWidth(250)
+        self.setFixedWidth(250)
 
     def set_up_signals(self):
         self.list_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -460,7 +471,7 @@ class HarmonyStore(QtWidgets.QGroupBox):
             self.list_widget.takeItem(self.list_widget.row(item))
 
     def item_double_clicked(self, item):
-        pass
+        self.restore_store_item.emit(item)
 
     def keyPressEvent(self, event):
         """Catch user key interactions. Close on escape."""
@@ -472,8 +483,16 @@ class StoreItem(QtWidgets.QListWidgetItem):
     def __init__(self, harmony, color_set, parent=None):
         super(StoreItem, self).__init__(parent=parent)
         self._harmony = harmony
-        self.color_set = color_set.copy()
+        self._color_set = color_set.copy()
         self.setText(self._harmony.name)
+
+    @property
+    def color_set(self):
+        return self._color_set
+
+    @property
+    def harmony(self):
+        return self._harmony
 
 
 class ColorHarmonyUi(QtWidgets.QDialog):
@@ -513,9 +532,6 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         """
         Build widget layout and add other widgets accordingly.
         """
-        colorwheel_layout = QtWidgets.QVBoxLayout()
-        colorwheel_layout.addWidget(self.colorwheel)
-
         top_layout = QtWidgets.QHBoxLayout()
         top_layout.addWidget(self.colorwheel)
         top_layout.addSpacing(20)
@@ -531,16 +547,7 @@ class ColorHarmonyUi(QtWidgets.QDialog):
 
     def build_menu(self):
         self.menu_bar = QtWidgets.QMenuBar()
-        self.session_menu = self.menu_bar.addMenu('Session')
         self.export_menu = self.menu_bar.addMenu('Export')
-
-        open_session = QtWidgets.QAction('Open Session ...', self)
-        open_session.triggered.connect(self.open_session)
-        self.session_menu.addAction(open_session)
-
-        save_session = QtWidgets.QAction('Save Session ...', self)
-        save_session.triggered.connect(self.export_session)
-        self.session_menu.addAction(save_session)
 
         export_nuke = QtWidgets.QAction('Export into nuke', self)
         export_nuke.triggered.connect(self.export_nuke)
@@ -560,8 +567,8 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         """
         Set window properties on main widget.
         """
-        width = 1100
-        height = 1000
+        width = 800
+        height = 900
         self.resize(width, height)
         self.setWindowTitle("Nuke color harmony")
         self.setMinimumSize(width, height)
@@ -591,7 +598,11 @@ class ColorHarmonyUi(QtWidgets.QDialog):
             self.close()
 
     def restore_store_item(self, item):
-        pass
+        color_set = item.color_set
+        value = color_set[0].valueF()
+        self.colorwheel.restore(item=item)
+        self.value_slider.value = value
+        self.harmonies.restore(item.harmony)
 
     def update_current_color_set(self, color_set):
         """
@@ -602,9 +613,6 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         """
         self._color_set = color_set
         self.colorbars.update(self._color_set)
-
-    def _get_export_data(self):
-        pass
 
     def export_nuke(self):
         self.export_for_nuke.emit(self.get_color_sets())
