@@ -11,7 +11,7 @@ def start_from_main():
     """Start up function from outside nuke."""
 
     app = QtWidgets.QApplication(sys.argv)
-    view_ = view.ColorPaletteUi()
+    view_ = view.ColorHarmonyUi()
     controller = Controller(view_)
     controller.view.raise_()
     controller.view.show()

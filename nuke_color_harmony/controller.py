@@ -1,13 +1,6 @@
 """Connect user interface with model."""
 
-from . import view
 from .export import BaseExport
-
-# try:
-#     from nuke_color_harmony import view
-# except ImportError:
-#     pass
-
 
 controller = None
 
@@ -16,7 +9,8 @@ class Controller(object):
     """Connect the user interface with model."""
 
     def __init__(self, view_):
-        self.view = view_
+
+        self._view = view_
         self.set_up_signals()
 
     def set_up_signals(self):
@@ -33,41 +27,31 @@ class Controller(object):
     def save_sesion(self, sesion_data):
         print("save_sesion")
 
-    def export_for_nuke(self, sesion_data):
-        print("export_for_nuke")
+    def export_for_nuke(self, color_sets):
+        export = BaseExport(color_sets=color_sets)
+        export.export_to_nuke()
 
     def export_for_csv(self, sesion_data):
         print("export_for_csv")
 
-    def export_for_clipboard(self, sesion_data):
-        export = BaseExport(sesion_data)
+    def export_for_clipboard(self, color_sets):
+        export = BaseExport(color_sets)
         export.copy_to_clipboard()
+
+    @property
+    def view(self):
+        return self._view
+
+    @view.setter
+    def view(self, view_):
+        self._view = view_
 
 
 def start():
     """Start up function."""
-    view_ = view.ColorPaletteUi()
-
+    from .view import ColorHarmonyUi
+    view_ = ColorHarmonyUi()
     controller = Controller(view_)
+
     controller.view.raise_()
     controller.view.show()
-
-
-def start_from_main():
-    """Start up function from outside nuke."""
-
-    import sys
-
-    from PySide2 import QtWidgets
-
-    app = QtWidgets.QApplication(sys.argv)
-    view_ = view.ColorPaletteUi()
-    controller = Controller(view_)
-    controller.view.raise_()
-    controller.view.show()
-
-    sys.exit(app.exec_())
-
-
-if __name__ == '__main__':
-    start_from_main()
