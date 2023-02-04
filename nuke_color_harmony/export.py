@@ -1,3 +1,5 @@
+import csv
+
 from PySide2 import QtWidgets
 from PySide2.QtGui import QColor
 
@@ -6,7 +8,8 @@ try:
 except ImportError:
     pass
 
-class BaseExport(object):
+
+class Exporter(object):
     delimiter = "|"
 
     def __init__(self, color_sets: list) -> None:
@@ -15,8 +18,7 @@ class BaseExport(object):
     def to_rgb(self, color):
         return color.getRgbF()[:3]
 
-    def copy_to_clipboard(self):
-
+    def colorsets_to_text(self):
         text = ""
         for color_set in self._color_sets:
             colors_amount = len(color_set)
@@ -26,6 +28,12 @@ class BaseExport(object):
                     text += self.delimiter
 
             text += "\n"
+
+        return text
+
+    def copy_to_clipboard(self):
+
+        text = self.colorsets_to_text()
 
         app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
         clipboard = app.clipboard()
@@ -58,18 +66,7 @@ class BaseExport(object):
                     contactsheet.setInput(index, reformat)
                 nuke.nodes.Output(inputs=[contactsheet])
 
-
-
-if __name__ == "__main__":
-    color_sets = [
-        [QColor.fromHsvF(0.2, 0.3, 0.800000, 1.000000),
-         QColor.fromHsvF(0.3, 0.4, 0.800000, 1.000000),
-         QColor.fromHsvF(0.4, 0.5, 0.800000, 1.000000),
-         QColor.fromHsvF(0.6, 0.3, 0.800000, 1.000000),
-         QColor.fromHsvF(0.7, 0.4, 0.800000, 1.000000)],
-        [QColor.fromHsvF(0.8, 0.5, 0.800000, 1.000000),
-         QColor.fromHsvF(0.9, 0.7, 0.800000, 1.000000),
-         QColor.fromHsvF(1.0, 0.8, 0.800000, 1.000000)]
-    ]
-    b = BaseExport(color_sets=color_sets)
-    b.copy_to_clipboard()
+    def export_as_csv(self, path):
+        with open(path, 'w') as dst:
+            text = self.colorsets_to_text()
+            dst.writelines(text)

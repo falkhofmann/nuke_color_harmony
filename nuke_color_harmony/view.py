@@ -455,7 +455,7 @@ class StoreItem(QtWidgets.QListWidgetItem):
 class ColorHarmonyUi(QtWidgets.QDialog):
 
     export_for_clipboard = QtCore.Signal(object)
-    export_for_csv = QtCore.Signal(object)
+    export_for_csv = QtCore.Signal(object, object)
     export_for_nuke = QtCore.Signal(object)
     open_sesion = QtCore.Signal(object)
     save_sesion = QtCore.Signal(object)
@@ -522,13 +522,15 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         export_nuke.triggered.connect(self.export_nuke)
         self.export_menu.addAction(export_nuke)
 
-        export_csv = QtWidgets.QAction('Export CSV', self)
-        export_csv.triggered.connect(self.export_csv)
-        self.export_menu.addAction(export_csv)
+        self.export_menu.addSeparator()
 
         export_clipboard = QtWidgets.QAction('Copy to Clipboard', self)
         export_clipboard.triggered.connect(self.export_clipboard)
         self.export_menu.addAction(export_clipboard)
+
+        export_csv = QtWidgets.QAction('Export CSV', self)
+        export_csv.triggered.connect(self.export_csv)
+        self.export_menu.addAction(export_csv)
 
     def set_up_window_properties(self):
         """
@@ -585,8 +587,9 @@ class ColorHarmonyUi(QtWidgets.QDialog):
 
     def export_csv(self):
         file_dialog = QtWidgets.QFileDialog()
-        file_dialog.getSaveFileName()
-        self.export_for_csv.emit(None)
+        file_path, __ = file_dialog.getSaveFileName(filter="csv(*.csv)")
+        if file_path:
+            self.export_for_csv.emit(self.get_color_sets(), file_path)
 
     def export_clipboard(self):
         self.export_for_clipboard.emit(self.get_color_sets())

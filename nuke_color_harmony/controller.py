@@ -1,6 +1,6 @@
 """Connect user interface with model."""
 
-from .export import BaseExport
+from .export import Exporter
 
 controller = None
 
@@ -28,14 +28,15 @@ class Controller(object):
         print("save_sesion")
 
     def export_for_nuke(self, color_sets):
-        export = BaseExport(color_sets=color_sets)
+        export = Exporter(color_sets=color_sets)
         export.export_to_nuke()
 
-    def export_for_csv(self, sesion_data):
-        print("export_for_csv")
+    def export_for_csv(self, color_sets, path):
+        export = Exporter(color_sets=color_sets)
+        export.export_as_csv(path=path)
 
     def export_for_clipboard(self, color_sets):
-        export = BaseExport(color_sets)
+        export = Exporter(color_sets)
         export.copy_to_clipboard()
 
     @property
