@@ -20,8 +20,8 @@ class Exporter(object):
     """
     delimiter = "|"
 
-    def __init__(self, color_sets: list) -> None:
-        self._color_sets = color_sets.copy()
+    def __init__(self, items: list) -> None:
+        self._color_sets = [(item.color_set, item.harmony) for item in items]
 
     def to_rgb(self, color: QColor) -> tuple:
         """
@@ -47,7 +47,7 @@ class Exporter(object):
                 r, g, b | r, g, b | r, g, b | r, g, b
         """
         text = ""
-        for color_set in self._color_sets:
+        for color_set, harmony in self._color_sets:
             colors_amount = len(color_set)
             for index, color in enumerate(color_set, start=1):
                 text += ", ".join(str(val) for val in self.to_rgb(color))
@@ -58,9 +58,13 @@ class Exporter(object):
 
         return text
 
-    def copy_to_clipboard(self) -> None:
+    def copy_to_clipboard(self, callback, params: str) -> None:
         """
         Copy colorsets as text into clipboard.
+
+        Args:
+            callback (function): Callback after success.
+            params (str): Parameter for callback.
         """
         text = self.colorsets_to_text()
 
@@ -68,15 +72,22 @@ class Exporter(object):
         clipboard = app.clipboard()
         clipboard.setText(text)
 
-    def export_to_nuke(self) -> None:
+        callback(params)
+
+    def export_to_nuke(self, callback, params: str) -> None:
         """
         Export colorsets into Nuke as group nodes, displaying those color sets.
+
+        Args:
+            callback (function): Callback after success.
+            params (str): Parameter for callback.
         """
         root_format = nuke.root().format()
         width, height = root_format.width(), root_format.height()
-        for color_set in self._color_sets:
+        for color_set, harmony in self._color_sets:
             reformats = []
-            group_node = nuke.nodes.Group(postage_stamp=True)
+            group_node = nuke.nodes.Group(
+                postage_stamp=True, label=harmony.name)
             with group_node:
                 for color in color_set:
                     constant = nuke.nodes.Constant(channels="rgb")
@@ -97,13 +108,19 @@ class Exporter(object):
                     contactsheet.setInput(index, reformat)
                 nuke.nodes.Output(inputs=[contactsheet])
 
-    def export_as_csv(self, path: str) -> None:
+        callback(params)
+
+    def export_as_csv(self, path: str, callback, params: str) -> None:
         """
         Export color sets as .csv file on given path.
 
         Args:
             path (str): Path to save .csv file.
+            callback (function): Callback after success.
+            params (str): Parameter for callback.
         """
         with open(path, 'w') as dst:
             text = self.colorsets_to_text()
             dst.writelines(text)
+
+        callback(params)

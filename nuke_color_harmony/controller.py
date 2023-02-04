@@ -29,36 +29,36 @@ class Controller(object):
         self.view.export_for_csv.connect(self.export_for_csv)
         self.view.export_for_clipboard.connect(self.export_for_clipboard)
 
-    def export_for_nuke(self, color_sets: list) -> None:
+    def export_for_nuke(self, items: list, callback, params:str) -> None:
         """
         Export given color sets into Nuke.
 
         Args:
-            color_sets (list): Color sets to export.
+            items (list): Color sets to export.
         """
-        export = Exporter(color_sets=color_sets)
-        export.export_to_nuke()
+        export = Exporter(items=items)
+        export.export_to_nuke(callback, params)
 
-    def export_for_csv(self, color_sets: list, path: str) -> None:
+    def export_for_csv(self, items: list, path: str, callback, param:str) -> None:
         """
         Export given color sets as .csv file on given path.
 
         Args:
-            color_sets (list): Color sets to export.
+            items (list): Color sets to export.
             path (str): Location to save .csv file.
         """
-        export = Exporter(color_sets=color_sets)
+        export = Exporter(items=items)
         export.export_as_csv(path=path)
 
-    def export_for_clipboard(self, color_sets: list) -> None:
+    def export_for_clipboard(self, items: list, callback, param:str) -> None:
         """
         Copy given color sets in clipboard.
 
         Args:
-            color_sets (list): Color sets to copy.
+            items (list): Color sets to copy.
         """
-        export = Exporter(color_sets)
-        export.copy_to_clipboard()
+        export = Exporter(items=items)
+        export.copy_to_clipboard(callback, param)
 
     @property
     def view(self):

@@ -798,9 +798,9 @@ class ColorHarmonyUi(QtWidgets.QDialog):
     Main widget to hold other widget.
     """
 
-    export_for_clipboard = QtCore.Signal(object)
+    export_for_clipboard = QtCore.Signal(object, object, str)
     export_for_csv = QtCore.Signal(object, object)
-    export_for_nuke = QtCore.Signal(object)
+    export_for_nuke = QtCore.Signal(object, object, str)
 
     def __init__(self):
         super(ColorHarmonyUi, self).__init__()
@@ -874,7 +874,7 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         width = 1000
         height = 1000
         self.resize(width, height)
-        self.setWindowTitle("Nuke color harmony")
+        self.setWindowTitle("Nuke Color Harmony")
         self.setMinimumSize(width, height)
         self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
 
@@ -933,8 +933,8 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         """
         Emit signal for nuke export.
         """
-        self.export_for_nuke.emit(self.get_color_sets())
-        self.status_bar.showMessage("Imported into Nuke")
+        self.export_for_nuke.emit(
+            self.get_items(), self.callback, "Imported into Nuke")
 
     def export_csv(self) -> None:
         """
@@ -943,24 +943,28 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         file_dialog = QtWidgets.QFileDialog()
         file_path, __ = file_dialog.getSaveFileName(filter="csv(*.csv)")
         if file_path:
-            self.export_for_csv.emit(self.get_color_sets(), file_path)
-            self.status_bar.showMessage(f"exported as {file_path}")
+            self.export_for_csv.emit(self.get_items(),
+                                     file_path,
+                                     self.callback, f"exported as {file_path}")
 
     def export_clipboard(self) -> None:
         """
         Emit signal to copy the store to the clipboard.
         """
-        self.export_for_clipboard.emit(self.get_color_sets())
-        self.status_bar.showMessage("copied to clipboard")
+        self.export_for_clipboard.emit(self.get_items(),
+                                       self.callback, "copied to clipboard")
 
-    def get_color_sets(self) -> list:
+    def get_items(self) -> list:
         """
         Get all color_sets from the store.
 
         Returns:
             list: Color sets from the HarmonyStore.
         """
-        return [item.color_set for item in self.harmony_store.items]
+        return [item for item in self.harmony_store.items]
+
+    def callback(self, status):
+        self.status_bar.showMessage(status)
 
     @property
     def harmony(self):
