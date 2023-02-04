@@ -1,3 +1,12 @@
+"""Dataclasses to use acrosse this package.
+
+Classes:
+    Color
+    Harmony
+
+Constants:
+    HARMONY_SETS
+"""
 
 from dataclasses import dataclass
 

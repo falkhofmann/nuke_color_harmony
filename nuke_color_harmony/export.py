@@ -1,4 +1,9 @@
-import csv
+"""
+This module holds one class for export.
+
+Classes:
+    Exporter
+"""
 
 from PySide2 import QtWidgets
 from PySide2.QtGui import QColor
@@ -10,15 +15,37 @@ except ImportError:
 
 
 class Exporter(object):
+    """
+    Object to export to various targets. Nuke, .csv file or clipboard.
+    """
     delimiter = "|"
 
     def __init__(self, color_sets: list) -> None:
         self._color_sets = color_sets.copy()
 
-    def to_rgb(self, color):
+    def to_rgb(self, color: QColor) -> tuple:
+        """
+        Convert given QColor to rgb tuple without alpha.
+
+        Args:
+            color (QColor): QColor to convert.
+
+        Returns:
+            tuple: Tuple which holds rgb as floats.
+        """
         return color.getRgbF()[:3]
 
     def colorsets_to_text(self):
+        """
+        Convert colorsets in a format to store in csv or clipboard.
+
+        Returns:
+            str: Formatted text.
+            Example: 
+                r, g, b | r, g, b | r, g, b
+                r, g, b | r, g, b | r, g, b | r, g, b | r, g, b
+                r, g, b | r, g, b | r, g, b | r, g, b
+        """
         text = ""
         for color_set in self._color_sets:
             colors_amount = len(color_set)
@@ -31,16 +58,20 @@ class Exporter(object):
 
         return text
 
-    def copy_to_clipboard(self):
-
+    def copy_to_clipboard(self) -> None:
+        """
+        Copy colorsets as text into clipboard.
+        """
         text = self.colorsets_to_text()
 
         app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
         clipboard = app.clipboard()
         clipboard.setText(text)
 
-    def export_to_nuke(self):
-
+    def export_to_nuke(self) -> None:
+        """
+        Export colorsets into Nuke as group nodes, displaying those color sets.
+        """
         root_format = nuke.root().format()
         width, height = root_format.width(), root_format.height()
         for color_set in self._color_sets:
@@ -66,7 +97,13 @@ class Exporter(object):
                     contactsheet.setInput(index, reformat)
                 nuke.nodes.Output(inputs=[contactsheet])
 
-    def export_as_csv(self, path):
+    def export_as_csv(self, path: str) -> None:
+        """
+        Export color sets as .csv file on given path.
+
+        Args:
+            path (str): Path to save .csv file.
+        """
         with open(path, 'w') as dst:
             text = self.colorsets_to_text()
             dst.writelines(text)

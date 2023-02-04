@@ -1,3 +1,10 @@
+"""
+This module holds a simple start up function for stand alone usage.
+
+Functions:
+    start_from_main
+
+"""
 
 import sys
 
@@ -8,8 +15,9 @@ from nuke_color_harmony.controller import Controller
 
 
 def start_from_main():
-    """Start up function from outside nuke."""
-
+    """
+    Start up function from outside nuke.
+    """
     app = QtWidgets.QApplication(sys.argv)
     view_ = view.ColorHarmonyUi()
     controller = Controller(view_)
