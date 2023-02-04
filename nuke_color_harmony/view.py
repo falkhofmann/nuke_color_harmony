@@ -64,7 +64,7 @@ class ColorWheel(QtWidgets.QWidget):
         self.square.moveCenter(self.rect().center())
 
     def paintEvent(self, ev: QPaintEvent) -> None:
-
+        pen_color = Qt.black if self.v > 0.25 else Qt.white
         center = QPointF(self.width()/2, self.height()/2)
         p = QPainter(self)
         p.setViewport(self.margin, self.margin, self.width() -
@@ -84,7 +84,7 @@ class ColorWheel(QtWidgets.QWidget):
         p.setBrush(val_grad)
         p.drawEllipse(self.square)
 
-        p.setPen(Qt.black)
+        p.setPen(pen_color)
         p.setBrush(self.selected_color)
 
         angle = 360 * self.h + 90
@@ -310,6 +310,8 @@ class Variation(QtWidgets.QWidget):
         self.set_up_window_properties()
         self._clear_color = QColor(0.0, 0.0, 0.0, 0.0)
         self._color = color or self._clear_color
+        self._color_label = ""
+        self._active = False
 
     def set_up_window_properties(self):
         self.setFixedSize(150, 400)
@@ -320,14 +322,36 @@ class Variation(QtWidgets.QWidget):
         palette.setColor(QtGui.QPalette.Window, color)
         self.setPalette(palette)
         self.setAutoFillBackground(True)
+        self.build_overlay()
+        self._active = True
 
     def clear_color(self):
         self._color = self._clear_color
         self.set_color(self._clear_color)
+        self._active = False
 
     @property
     def color(self):
         return self._color
+
+    def build_overlay(self):
+        rgb = self._color.getRgbF()[:3]
+        rgb_colors = f"red:     {rgb[0]:.2f}\ngreen: {rgb[1]:.2f}\nblue:   {rgb[2]:.2f}\n"
+        self._color_label = rgb_colors
+
+    def paintEvent(self, event):
+        if self._active:
+            painter = QtGui.QPainter()
+            painter.begin(self)
+            self.drawText(event, painter)
+            painter.end()
+
+    def drawText(self, event, painter):
+        painter.setPen(QtGui.QColor(10, 10, 10))
+        painter.setFont(QtGui.QFont('Decorative', 10))
+        painter.drawText(event.rect(),
+                         QtCore.Qt.AlignBottom,
+                         self._color_label)
 
 
 class ColorBars(QtWidgets.QGroupBox):
@@ -630,4 +654,5 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         value = uniform(0.4, 1)
         random_color = QColor.fromHsvF(
             uniform(0.2, 1), uniform(0.2, 1), value, 1.0)
+        self.value_slider.value = value
         self.colorwheel.randomize_value(random_color=random_color)
