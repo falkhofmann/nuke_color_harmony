@@ -88,6 +88,8 @@ class Exporter(object):
             reformats = []
             group_node = nuke.nodes.Group(
                 postage_stamp=True, label=harmony.name)
+
+            constants = []
             with group_node:
                 for color in color_set:
                     constant = nuke.nodes.Constant(channels="rgb")
@@ -100,6 +102,7 @@ class Exporter(object):
                     reformat = nuke.nodes.Reformat(type="to box", box_fixed=True, box_width=c_width,  box_height=height,
                                                    resize="distort", xpos=constant.xpos(), ypos=constant.ypos() + 100, inputs=[constant])
                     reformats.append(reformat)
+                    constants.append(constant)
 
                 contactsheet = nuke.nodes.ContactSheet(width=width, height=height,
                                                        rows=1, columns=len(reformats), gap=20, center=True,
@@ -107,6 +110,17 @@ class Exporter(object):
                 for index, reformat in enumerate(reformats):
                     contactsheet.setInput(index, reformat)
                 nuke.nodes.Output(inputs=[contactsheet])
+
+            tab_knob = nuke.Tab_Knob(
+                "nuke_color_harmony", "nuke_color_harmony")
+            txt_knob = nuke.Text_Knob("harmony", f"<b>{harmony.name}</b>")
+            group_node.addKnob(tab_knob)
+            group_node.addKnob(txt_knob)
+
+            for index, constant in enumerate(constants, start=1):
+                link = nuke.Link_Knob(f"color{index}", f"color{index}")
+                link.setLink(f"{constant.fullName()}.color")
+                group_node.addKnob(link)
 
         callback(params)
 
