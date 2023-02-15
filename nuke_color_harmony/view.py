@@ -22,8 +22,9 @@ from random import choice, uniform
 
 from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtCore import QLineF, QPointF, QRect, Qt
-from PySide2.QtGui import (QColor, QConicalGradient, QMouseEvent, QPainter,
-                           QPaintEvent, QRadialGradient, QResizeEvent)
+from PySide2.QtGui import (QBrush, QColor, QConicalGradient, QLinearGradient,
+                           QMouseEvent, QPainter, QPaintEvent, QRadialGradient,
+                           QResizeEvent)
 
 from nuke_color_harmony.controller import Controller as HarmonyController
 from nuke_color_harmony.harmonies import HARMONY_SETS, Color, Harmony
@@ -719,7 +720,8 @@ class HarmonyStore(QtWidgets.QGroupBox):
             harmony (Harmony): Harmony Set.
             color_set (list): Colors as list.
         """
-        store_item = StoreItem(harmony=harmony, color_set=color_set)
+        store_item = StoreItem(
+            harmony=harmony, color_set=color_set, parent=self)
         self.list_widget.addItem(store_item)
 
     def context_menu(self, QPos: QPointF) -> None:
@@ -771,6 +773,21 @@ class StoreItem(QtWidgets.QListWidgetItem):
         self._harmony = harmony
         self._color_set = color_set.copy()
         self.setText(self._harmony.name)
+        self.draw_background()
+
+    def draw_background(self):
+        gradient = QLinearGradient(0, 0, 250, 0)
+        sub_stop = 1.0/(len(self.color_set) - 1)
+
+        gradient.setColorAt(0, self.color_set[0])
+        gradient.setColorAt(1, self.color_set[-1])
+
+        for index, color in enumerate(self.color_set, start=0):
+            gradient.setColorAt(sub_stop * index, color)
+
+        gradient.setColorAt(1, self.color_set[-1])
+        brush = QBrush(gradient)
+        self.setBackground(brush)
 
     @property
     def color_set(self) -> list:
@@ -982,12 +999,13 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         """
         if self._color_set and self._harmony:
             self.harmony_store.add_colors_to_store(
-                harmony=self._harmony, color_set=self._color_set)
+                harmony=self._harmony,
+                color_set=self._color_set)
 
     def slider_value_changed(self, value: float) -> None:
         """
         Apply given value on the colorwheel.
-
+                
         Args:
             value (float): Value to implement into the colorwheel representation.
         """
