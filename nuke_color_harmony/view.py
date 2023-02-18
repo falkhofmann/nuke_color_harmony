@@ -18,6 +18,7 @@ Functions:
 """
 
 import os
+from functools import partial
 from random import choice, uniform
 
 from PySide2 import QtCore, QtGui, QtWidgets
@@ -294,6 +295,10 @@ class ColorWheel(QtWidgets.QWidget):
         """
         self._harmony = harmony
         self.set_color(color=color)
+
+    @property
+    def current_color(self) -> list:
+        return self._calc_colors
 
 
 class ValueSlider(QtWidgets.QWidget):
@@ -586,7 +591,7 @@ class Variation(QtWidgets.QWidget):
         """
         p_color = pen_color(self._color.valueF())
         painter.setPen(p_color)
-        painter.setFont(QtGui.QFont('Decorative', 10))
+        painter.setFont(QtGui.QFont("Decorative", 10))
         painter.drawText(event.rect(),
                          QtCore.Qt.AlignBottom,
                          self._color_label)
@@ -596,6 +601,7 @@ class ColorBars(QtWidgets.QGroupBox):
     """
     Widget to hold the different color variations.
     """
+
     def __init__(self, parent=None):
         super(ColorBars, self).__init__(parent=parent)
         self.setTitle("Preview")
@@ -777,14 +783,13 @@ class StoreItem(QtWidgets.QListWidgetItem):
 
     def draw_background(self):
         gradient = QLinearGradient(0, 0, 250, 0)
-        sub_stop = 1.0/(len(self.color_set) - 1)
-
+        sub_stop = 1.0/(len(self.color_set)-1)
         gradient.setColorAt(0, self.color_set[0])
         gradient.setColorAt(1, self.color_set[-1])
 
         for index, color in enumerate(self.color_set, start=0):
             gradient.setColorAt(sub_stop * index, color)
-
+            gradient.setColorAt((sub_stop * index) + sub_stop - 0.0001, color)
         gradient.setColorAt(1, self.color_set[-1])
         brush = QBrush(gradient)
         self.setBackground(brush)
@@ -817,7 +822,9 @@ class ColorHarmonyUi(QtWidgets.QDialog):
 
     export_for_clipboard = QtCore.Signal(object, object, str)
     export_for_csv = QtCore.Signal(object, object)
-    export_for_nuke = QtCore.Signal(object, object, str)
+    import_to_nuke = QtCore.Signal(object, object, str)
+    toggle_link = QtCore.Signal(bool)
+    current_colors = QtCore.Signal(object)
 
     def __init__(self):
         super(ColorHarmonyUi, self).__init__()
@@ -827,6 +834,7 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         self._harmony = None
         self._color_set = []
         self._variations = []
+        self._live_link_activated = False
 
         self.build_widgets()
         self.build_menu()
@@ -867,22 +875,34 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         """
         Build Menubar.
         """
+        self.tool_bar = QtWidgets.QToolBar()
+
         self.menu_bar = QtWidgets.QMenuBar()
-        self.export_menu = self.menu_bar.addMenu('Export')
 
-        export_nuke = QtWidgets.QAction('Export into nuke', self)
-        export_nuke.triggered.connect(self.export_nuke)
+        import_into_nuke = QtWidgets.QAction("Import Store into Nuke", self)
+        import_into_nuke.setToolTip(
+            "Import current items from store into nuke.")
+        self.menu_bar.addAction(import_into_nuke)
+        self.export_menu = self.menu_bar.addMenu("Export ..")
+        export_nuke = QtWidgets.QAction("Export as .nk", self)
+        export_clipboard = QtWidgets.QAction("Copy to Clipboard", self)
+        export_csv = QtWidgets.QAction("Export CSV", self)
+
         self.export_menu.addAction(export_nuke)
-
-        self.export_menu.addSeparator()
-
-        export_clipboard = QtWidgets.QAction('Copy to Clipboard', self)
-        export_clipboard.triggered.connect(self.export_clipboard)
         self.export_menu.addAction(export_clipboard)
-
-        export_csv = QtWidgets.QAction('Export CSV', self)
-        export_csv.triggered.connect(self.export_csv)
         self.export_menu.addAction(export_csv)
+
+        activate_link = QtWidgets.QAction("LiveLink", self)
+        activate_link.setCheckable(True)
+        self.menu_bar.addAction(activate_link)
+
+        import_into_nuke.triggered.connect(self.import_into_nuke)
+        export_nuke.triggered.connect(self.export_nuke)
+        export_clipboard.triggered.connect(self.export_clipboard)
+        export_csv.triggered.connect(self.export_csv)
+        activate_link.triggered.connect(self.toggle_live_link)
+        activate_link.setToolTip(
+            "Active Live link between Panel and selected harmony nodes.")
 
     def set_up_window_properties(self) -> None:
         """
@@ -905,6 +925,7 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         self.harmonies.randomize_values.connect(self.randomize_values)
         self.harmonies.add_current_to_store.connect(self.add_current_to_store)
         self.harmony_store.restore_store_item.connect(self.restore_store_item)
+        self.colorwheel.color_changed.connect(self.emit_current_colors)
 
     def abort(self) -> None:
         """
@@ -946,12 +967,15 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         self._color_set = color_set
         self.colorbars.update(self._color_set)
 
-    def export_nuke(self) -> None:
+    def import_into_nuke(self) -> None:
         """
-        Emit signal for nuke export.
+        Emit signal for nuke import.
         """
-        self.export_for_nuke.emit(
+        self.import_to_nuke.emit(
             self.get_items(), self.callback, "Imported into Nuke")
+
+    def export_nuke(self) -> None:
+        pass
 
     def export_csv(self) -> None:
         """
@@ -980,6 +1004,14 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         """
         return [item for item in self.harmony_store.items]
 
+    def toggle_live_link(self, flag: bool) -> None:
+        self.toggle_link.emit(flag)
+        self._live_link_activated = flag
+
+    def emit_current_colors(self) -> None:
+        if self._live_link_activated:
+            self.current_colors.emit(self.colorwheel.current_color)
+
     def callback(self, status):
         self.status_bar.showMessage(status)
 
@@ -1005,7 +1037,7 @@ class ColorHarmonyUi(QtWidgets.QDialog):
     def slider_value_changed(self, value: float) -> None:
         """
         Apply given value on the colorwheel.
-                
+
         Args:
             value (float): Value to implement into the colorwheel representation.
         """
