@@ -13,6 +13,8 @@ try:
 except ImportError:
     pass
 
+from nuke_color_harmony import IDENTIFIER_NAME
+
 
 class Exporter(object):
     """
@@ -111,8 +113,7 @@ class Exporter(object):
                     contactsheet.setInput(index, reformat)
                 nuke.nodes.Output(inputs=[contactsheet])
 
-            tab_knob = nuke.Tab_Knob(
-                "nuke_color_harmony", "nuke_color_harmony")
+            tab_knob = nuke.Tab_Knob(IDENTIFIER_NAME, IDENTIFIER_NAME)
             txt_knob = nuke.Text_Knob("harmony", f"<b>{harmony.name}</b>")
             group_node.addKnob(tab_knob)
             group_node.addKnob(txt_knob)
