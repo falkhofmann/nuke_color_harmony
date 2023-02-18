@@ -28,6 +28,7 @@ class Controller(object):
         Connect interface signal with model functions.
         """
         self.view.import_to_nuke.connect(self.import_to_nuke)
+        self.view.export_as_nukefile.connect(self.export_as_nukefile)
         self.view.export_for_csv.connect(self.export_for_csv)
         self.view.export_for_clipboard.connect(self.export_for_clipboard)
         self.view.toggle_link.connect(self.toggle_live_link)
@@ -41,7 +42,17 @@ class Controller(object):
             items (list): Color sets to export.
         """
         exporter = Exporter(items=items)
-        exporter.export_to_nuke(callback, params)
+        exporter.import_into_nuke(callback, params)
+
+    def export_as_nukefile(self, items: list, callback, params: str) -> None:
+        """
+        Export given color sets into Nuke.
+
+        Args:
+            items (list): Color sets to export.
+        """
+        exporter = Exporter(items=items)
+        exporter.export_as_nukefile(callback, params)
 
     def export_for_csv(self, items: list, path: str, callback, param:str) -> None:
         """

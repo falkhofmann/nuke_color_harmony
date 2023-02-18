@@ -819,7 +819,7 @@ class ColorHarmonyUi(QtWidgets.QDialog):
     """
     Main widget to hold other widget.
     """
-
+    export_as_nukefile = QtCore.Signal(object, object, str)
     export_for_clipboard = QtCore.Signal(object, object, str)
     export_for_csv = QtCore.Signal(object, object)
     import_to_nuke = QtCore.Signal(object, object, str)
@@ -975,7 +975,9 @@ class ColorHarmonyUi(QtWidgets.QDialog):
             self.get_items(), self.callback, "Imported into Nuke")
 
     def export_nuke(self) -> None:
-        pass
+        self.export_as_nukefile.emit(self.get_items(),
+                                     self.callback,
+                                     "exported as nukefile")
 
     def export_csv(self) -> None:
         """

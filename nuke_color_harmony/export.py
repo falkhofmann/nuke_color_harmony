@@ -14,6 +14,8 @@ except ImportError:
     pass
 
 from nuke_color_harmony import IDENTIFIER_NAME
+from nuke_color_harmony.harmony_template import (ADD_KNOB, GROUP, MAIN_SCRIPT,
+                                                 SINGLE_COLOR)
 
 
 class Exporter(object):
@@ -76,7 +78,7 @@ class Exporter(object):
 
         callback(params)
 
-    def export_to_nuke(self, callback, params: str) -> None:
+    def import_into_nuke(self, callback, params: str) -> None:
         """
         Export colorsets into Nuke as group nodes, displaying those color sets.
 
@@ -134,8 +136,69 @@ class Exporter(object):
             callback (function): Callback after success.
             params (str): Parameter for callback.
         """
+        self.export_to_disk(path=path, content=self.colorsets_to_text(),
+                            callback=callback, params=params)
+
+    def export_to_disk(self, path: str, content: str, callback, params: str):
         with open(path, 'w') as dst:
-            text = self.colorsets_to_text()
-            dst.writelines(text)
+            dst.writelines(content)
 
         callback(params)
+
+    def export_as_nukefile(self, callback, params: str = "asas") -> None:
+
+        path = nuke.getFilename("Export Nodes As Script",
+                                "*.nk", "", "script",
+                                "save", extension=".nk")
+        if not path:
+            return
+
+        root_format = nuke.root().format()
+        width, height = root_format.width(), root_format.height()
+        nuke_version = f"{nuke.env['NukeVersionMajor']}.{nuke.env['NukeVersionMinor']} v{nuke.env['NukeVersionRelease']}"
+        group_index = 1
+
+        data = {"nuke_version_string": nuke_version,
+                "reformat_height": height,
+                "cs_width": width,
+                "cs_height": height
+                }
+
+        groups = ""
+        for color_set, harmony in self._color_sets:
+
+            extend_data = {"color_harmony": harmony.name,
+                           "group_index": group_index,
+                           "group_xpos": 100 * group_index,
+                           "reformat_width": width / len(color_set),
+                           "color_amount": len(color_set),
+                           }
+
+            data = {**data, **extend_data}
+
+            add_user_knobs = ""
+            single_colors = ""
+
+            for constant_index, color in enumerate(reversed(color_set), start=1):
+                components = self.to_rgb(color=color)
+                color_data = {"red": components[0],
+                              "green": components[1],
+                              "blue": components[2],
+                              "constant_index": constant_index,
+                              "xpos": 100 + (100 * constant_index)}
+                data = {**data, **color_data}
+
+                add_user_knobs += ADD_KNOB.format(**data) + "\n"
+                single_colors += SINGLE_COLOR.format(**data) + "\n"
+
+            data["add_user_knobs_to_script"] = add_user_knobs
+            data["add_colors_to_script"] = single_colors
+            group_node = GROUP.format(**data)
+            groups += group_node + "\n"
+            group_index += 1
+
+        data["add_groups_to_script"] = groups
+        main_script = MAIN_SCRIPT.format(**data)
+        self.export_to_disk(path, main_script,
+                            callback=callback,
+                            params=params)
