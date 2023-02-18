@@ -10,3 +10,8 @@ QPushButton:checked {
 #Button:hover {
     background-color: #fca30a;
 }
+#LiveLinkActive{
+    border-style: dotted;
+    border-width: 2px;
+    background-color: #d14a312a;
+}

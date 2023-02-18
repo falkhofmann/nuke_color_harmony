@@ -80,7 +80,8 @@ class Controller(object):
             self._linker = Linker()
 
     def set_live_color(self, colors) -> None:
-        self._linker.values = colors
+        if colors:
+            self._linker.values = colors
 
     @property
     def view(self):

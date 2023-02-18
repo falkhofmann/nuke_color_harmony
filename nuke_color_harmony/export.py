@@ -82,6 +82,8 @@ class Exporter(object):
         """
         Export colorsets into Nuke as group nodes, displaying those color sets.
 
+        This could also use the export to .nk logic to reduce code
+
         Args:
             callback (function): Callback after success.
             params (str): Parameter for callback.
@@ -140,12 +142,28 @@ class Exporter(object):
                             callback=callback, params=params)
 
     def export_to_disk(self, path: str, content: str, callback, params: str):
+        """
+        Export color hamony sets directly to disk.
+
+        Args:
+            path (str): Location where to store the file.
+            content (str): Content to store inside file. Either Nuke nodes or csv pattern.
+            callback (function): Callback function to confirm success.
+            params (str): Message parameter for callback.
+        """
         with open(path, 'w') as dst:
             dst.writelines(content)
 
         callback(params)
 
-    def export_as_nukefile(self, callback, params: str = "asas") -> None:
+    def export_as_nukefile(self, callback, params: str) -> None:
+        """
+        Export color harmonines durectly to dis in native nuke format.
+
+        Args:
+            callback (function): Callback function to confirm success.
+            params (str): Message parameter for callback.
+        """
 
         path = nuke.getFilename("Export Nodes As Script",
                                 "*.nk", "", "script",
@@ -201,4 +219,4 @@ class Exporter(object):
         main_script = MAIN_SCRIPT.format(**data)
         self.export_to_disk(path, main_script,
                             callback=callback,
-                            params=params)
+                            params=params.format(path=path))

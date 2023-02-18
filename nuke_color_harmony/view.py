@@ -43,8 +43,7 @@ def set_style_sheet(widget: QtWidgets.QWidget) -> None:
                                                 "stylesheet.qss"))
 
     with open(styles_file, "r") as file_:
-        style = file_.read()
-        widget.setStyleSheet(style)
+        widget.setStyleSheet(file_.read())
 
 
 def pen_color(value: float) -> QColor:
@@ -60,7 +59,7 @@ def pen_color(value: float) -> QColor:
     return QtGui.QColor(10, 10, 10) if value > 0.3 else QtGui.QColor(150, 150, 150)
 
 
-class ColorWheel(QtWidgets.QWidget):
+class ColorWheel(QtWidgets.QFrame):
     """
     Colorwheel widget to display color in Hue and saturation.
     """
@@ -435,6 +434,7 @@ class HarmonieSelection(QtWidgets.QGroupBox):
             button_layout.addWidget(btn)
         button_layout.addStretch()
         button_layout.addWidget(self.btn_randomize)
+        button_layout.addSpacing(10)
         button_layout.addWidget(self.btn_add_to_store)
 
         main_layout = QtWidgets.QVBoxLayout()
@@ -776,21 +776,19 @@ class StoreItem(QtWidgets.QListWidgetItem):
 
     def __init__(self, harmony, color_set, parent=None):
         super(StoreItem, self).__init__(parent=parent)
+        self._parent = parent
         self._harmony = harmony
         self._color_set = color_set.copy()
         self.setText(self._harmony.name)
         self.draw_background()
 
     def draw_background(self):
-        gradient = QLinearGradient(0, 0, 250, 0)
-        sub_stop = 1.0/(len(self.color_set)-1)
-        gradient.setColorAt(0, self.color_set[0])
-        gradient.setColorAt(1, self.color_set[-1])
-
-        for index, color in enumerate(self.color_set, start=0):
+        gradient = QLinearGradient(0, 0, self._parent.width(), 0)
+        sub_stop = 1.0/(len(self.color_set))
+        for index, color in enumerate(self.color_set):
             gradient.setColorAt(sub_stop * index, color)
-            gradient.setColorAt((sub_stop * index) + sub_stop - 0.0001, color)
-        gradient.setColorAt(1, self.color_set[-1])
+            gradient.setColorAt((sub_stop * index) +
+                                (sub_stop - 0.0001), color)
         brush = QBrush(gradient)
         self.setBackground(brush)
 
@@ -866,6 +864,7 @@ class ColorHarmonyUi(QtWidgets.QDialog):
 
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.addWidget(self.menu_bar)
+        main_layout.addWidget(self.tool_bar)
         main_layout.addLayout(top_layout)
         main_layout.addWidget(self.colorbars)
         main_layout.addWidget(self.status_bar)
@@ -875,26 +874,26 @@ class ColorHarmonyUi(QtWidgets.QDialog):
         """
         Build Menubar.
         """
-        self.tool_bar = QtWidgets.QToolBar()
-
         self.menu_bar = QtWidgets.QMenuBar()
+        self.tool_bar = QtWidgets.QToolBar("ahar")
 
-        import_into_nuke = QtWidgets.QAction("Import Store into Nuke", self)
-        import_into_nuke.setToolTip(
-            "Import current items from store into nuke.")
-        self.menu_bar.addAction(import_into_nuke)
         self.export_menu = self.menu_bar.addMenu("Export ..")
         export_nuke = QtWidgets.QAction("Export as .nk", self)
         export_clipboard = QtWidgets.QAction("Copy to Clipboard", self)
         export_csv = QtWidgets.QAction("Export CSV", self)
-
         self.export_menu.addAction(export_nuke)
         self.export_menu.addAction(export_clipboard)
         self.export_menu.addAction(export_csv)
 
+        import_into_nuke = QtWidgets.QAction("Import Store into Nuke", self)
+        self.tool_bar.addAction(import_into_nuke)
+
+        import_into_nuke.setToolTip(
+            "Import items in store into current session.")
+
         activate_link = QtWidgets.QAction("LiveLink", self)
         activate_link.setCheckable(True)
-        self.menu_bar.addAction(activate_link)
+        self.tool_bar.addAction(activate_link)
 
         import_into_nuke.triggered.connect(self.import_into_nuke)
         export_nuke.triggered.connect(self.export_nuke)
@@ -977,7 +976,7 @@ class ColorHarmonyUi(QtWidgets.QDialog):
     def export_nuke(self) -> None:
         self.export_as_nukefile.emit(self.get_items(),
                                      self.callback,
-                                     "exported as nukefile")
+                                     "Exported as Nukefile to: {path}")
 
     def export_csv(self) -> None:
         """
@@ -1009,6 +1008,11 @@ class ColorHarmonyUi(QtWidgets.QDialog):
     def toggle_live_link(self, flag: bool) -> None:
         self.toggle_link.emit(flag)
         self._live_link_activated = flag
+        if self._live_link_activated:
+            self.colorwheel.setObjectName("LiveLinkActive")
+        else:
+            self.colorwheel.setObjectName("")
+        set_style_sheet(self.colorwheel)
 
     def emit_current_colors(self) -> None:
         if self._live_link_activated:
