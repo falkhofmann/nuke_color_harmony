@@ -2,6 +2,7 @@
 
 This tool prevides the ability to work with [color harmonies](https://en.wikipedia.org/wiki/Harmony_(color)) inside the application [Nuke](https://www.foundry.com/products/nuke-family/nuke) from [The Foundry](https://www.foundry.com/).
 
+<img src="https://user-images.githubusercontent.com/21419051/221424865-1f1d92f0-0544-48ca-a8af-5b52fd4dc6dc.png" width="800">
 
  ## Usage
  While the main purpose is to run it inside  Nuke, it is also possible to use it as a standalone application.
