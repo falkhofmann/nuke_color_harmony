@@ -1,3 +1,7 @@
+"""Module to hold string template for exporting .nk files.
+"""
+
+
 ADD_KNOB = "  addUserKnob {{41 color{constant_index} T Group{group_index}.Constant{constant_index}.color}}"
 
 SINGLE_COLOR = """Constant {{
