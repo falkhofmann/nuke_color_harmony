@@ -20,7 +20,7 @@ Currently three different export options are supported:
 
 ## Live Linking
 
-The idea behind live linking is, to dynamically change the knob values while editing harmonies in the panel. This allows to reduce the steps to find a the desired colors while working with the group nodes withinn Nuke.
+The idea behind live linking is, to dynamically change the knob values while editing harmonies in the panel. This allows to reduce the steps to find a the desired colors while working directly with the group nodes within Nuke intead of adjust and import again.
 
 
 ## Demo
